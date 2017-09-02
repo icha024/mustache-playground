@@ -11,6 +11,7 @@ import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.ReadContext;
 import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
+import jdk.nashorn.api.scripting.ScriptUtils;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -21,6 +22,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -47,7 +49,7 @@ public class App {
         MustacheFactory mf = new DefaultMustacheFactory();
         Mustache mustache = mf.compile("template.mustache");
 
-        Map<String, Object> gMap = new ConcurrentHashMap();
+        Map<String, Object> gMap = new ConcurrentHashMap<>();
 
         Map<String, Object> functionMap = new HashMap<>();
         functionMap.put("name", (TemplateFunction) s -> "name value");
@@ -57,13 +59,24 @@ public class App {
             try {
                 String id = UUID.randomUUID()
                         .toString();
-                Object evalRes = engine.eval("Object.keys(" + jpVal + ")");
-                gMap.put(id, evalRes);
+                Object evalRes = engine.eval("print(Object.keys("+ jpVal +")); Object.keys(" + jpVal + ")");
+                String javaEvalRes = (String) ScriptUtils.convert(evalRes, String.class);
+//                String javaEvalRes = (String) evalRes;
+                gMap.put(id, javaEvalRes);
                 log("id: " + id);
-                log("evalRes: " + evalRes);
+//                log("evalRes: " + Arrays.asList(evalRes).forEach(eachVal -> log(eachVal)));
+                log("evalRes: ");
+                Arrays.asList(javaEvalRes.split(",")).forEach(eachVal -> log(javaEvalRes));
+
 //                return "[TemplateFunction cb: " + engine.eval("Object.keys(" + jpVal + ")") + "]";
 //                return engine.eval("Object.keys(" + jpVal + ")");
-                return "{{#y}}" + id + "{{/y}}";
+//                return "{{#y}}" + id + "{{/y}}";
+
+//                functionMap.put(id, evalRes);
+//                functionMap.put(id, Arrays.asList(evalRes));
+                functionMap.put(id, javaEvalRes.split(","));
+                functionMap.put("secondName", "a second name");
+                return "Getting id...:\n {{#" + id + "}} key: {{.}}\n {{/" + id + "}} \n{{secondName}}";
             } catch (ScriptException e) {
                 throw new IllegalStateException(e);
             }
@@ -94,7 +107,7 @@ public class App {
         return jsonWriter.writeValueAsString(obj);
     }
 
-    private static void log(String s) {
-        System.out.println(s);
+    private static void log(Object s) {
+        System.out.println("DEBUG> " + s);
     }
 }
